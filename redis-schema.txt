@@ -1,0 +1,17 @@
+INCR id:topics
+HMSET topic:{id} topic_url "topic_url" created_timestamp {timestamp}
+ZADD topics {id} "topic_url"
+
+INCR id:subscriptions
+HMSET subscription:{id} topic_id {topic_id} callback_url "callback_url" hub.lease_seconds hub.secret subscribed_on
+ZADD subscriptions {id} "callback_url"
+
+INCR id:messages
+HMSET message:{id} message "message" topic_id {topic_id} published_on {timestamp}
+ZADD msg_list:{topic_id} {timestamp} {message_id}
+
+ZADD sub_queue:{subscription_id} timestamp {message_id}
+ZADD sub_delivered:{subscription_id} timestamp {message_id}
+ZADD sub_poisoned:{subscription_id} timestamp {message_id}
+
+LPUSH sub_delivery_log:{subscription_id} "log message"
