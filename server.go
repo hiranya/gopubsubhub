@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/op/go-logging"
 	redis "gopkg.in/redis.v4"
@@ -96,11 +98,19 @@ func subscribe(r *http.Request) error {
 		appendErrorString(&errorBuffer, errorRequiredFieldMissingHubTopic)
 	}
 
-	pong, err := redisClient.Ping().Result()
-	log.Debug(pong, err)
-
 	if errorBuffer.String() != "" {
 		return errors.New(errorBuffer.String())
+	}
+
+	topicScore := redisClient.ZScore("topics", hubTopic).Val()
+	if topicScore == 0 {
+		topicID := redisClient.Incr("id:topics")
+		redisClient.ZAdd("topics", redis.Z{Score: float64(topicID.Val()), Member: hubTopic})
+
+		topicsMap := make(map[string]string)
+		topicsMap["topic_url"] = hubTopic
+		topicsMap["created_timestamp"] = strconv.FormatInt(time.Now().Unix(), 10)
+		redisClient.HMSet("topic:"+strconv.FormatInt(topicID.Val(), 10), topicsMap)
 	}
 
 	return nil
