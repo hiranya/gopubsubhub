@@ -8,3 +8,9 @@ Start redis
 
 Gain shell to redis
 - docker exec -it <container_id> bash
+
+Unit tests
+- go test -tags=unit
+
+Clean test data in Redis
+- go test -tags=clean
