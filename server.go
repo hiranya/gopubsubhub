@@ -102,15 +102,27 @@ func subscribe(r *http.Request) error {
 		return errors.New(errorBuffer.String())
 	}
 
-	topicScore := redisClient.ZScore("topics", hubTopic).Val()
-	if topicScore == 0 {
-		topicID := redisClient.Incr("id:topics")
-		redisClient.ZAdd("topics", redis.Z{Score: float64(topicID.Val()), Member: hubTopic})
+	topicID := int64(redisClient.ZScore("topics", hubTopic).Val())
+	if topicID == 0 {
+		topicID = redisClient.Incr("id:topics").Val()
+		redisClient.ZAdd("topics", redis.Z{Score: float64(topicID), Member: hubTopic})
 
-		topicsMap := make(map[string]string)
-		topicsMap["topic_url"] = hubTopic
-		topicsMap["created_timestamp"] = strconv.FormatInt(time.Now().Unix(), 10)
-		redisClient.HMSet("topic:"+strconv.FormatInt(topicID.Val(), 10), topicsMap)
+		topicMap := make(map[string]string)
+		topicMap["topic_url"] = hubTopic
+		topicMap["created_timestamp"] = strconv.FormatInt(time.Now().Unix(), 10)
+		redisClient.HMSet("topic:"+strconv.FormatInt(topicID, 10), topicMap)
+	}
+
+	subscriptionScore := redisClient.ZScore("subscriptions", hubCallback).Val()
+	if subscriptionScore == 0 {
+		subscriptionID := redisClient.Incr("id:subscriptions")
+		redisClient.ZAdd("subscriptions", redis.Z{Score: float64(subscriptionID.Val()), Member: hubCallback})
+
+		subscriptionMap := make(map[string]string)
+		subscriptionMap["topic_id"] = strconv.FormatInt(topicID, 10)
+		subscriptionMap["created_timestamp"] = strconv.FormatInt(time.Now().Unix(), 10)
+		subscriptionMap["callback_url"] = hubCallback
+		redisClient.HMSet("subscription:"+strconv.FormatInt(subscriptionID.Val(), 10), subscriptionMap)
 	}
 
 	return nil
